@@ -841,7 +841,7 @@ function finishSmooth(group,inner,parts,o){
 }
 const physBody=(color,o={})=>new THREE.MeshPhysicalMaterial(Object.assign({color,roughness:.32,metalness:.12,clearcoat:1,clearcoatRoughness:.18,envMap:envTex,envMapIntensity:1.0,normalMap:scaleN,normalScale:new THREE.Vector2(0.35,0.35)},o));
 function buildMegaSmooth(){
-  const group=new THREE.Group(), inner=new THREE.Group(); group.add(inner); scene.add(group); group.visible=false; const SC=1.22; group.scale.setScalar(SC);
+  const group=new THREE.Group(), inner=new THREE.Group(); group.add(inner); scene.add(group); group.visible=false; const SC=0.82; group.scale.setScalar(SC);
   const bodyMat=physBody(0x1a6a82,{envMapIntensity:0.3,roughness:.38}), belly=physBody(0x9cc8bc,{envMapIntensity:0.25,roughness:.55,clearcoat:.3,normalScale:new THREE.Vector2(0.15,0.15)});
   const spikeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(0.4,2.4,3)}), eyeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,2.4,0.4)});
   const toothMat=new THREE.MeshPhysicalMaterial({color:0xfff6e8,roughness:.3,clearcoat:1,envMap:envTex});
@@ -867,7 +867,7 @@ function buildMegaSmooth(){
   return finishSmooth(group,inner,K.parts,{bodyMat,spikeMat,eyeMat,wingMat:null,legs,legL:legs[0],legR:legs[1],wings:[],scale:SC});
 }
 function buildDrakeSmooth(){
-  const group=new THREE.Group(), inner=new THREE.Group(); group.add(inner); scene.add(group); group.visible=false; const SC=1.22; group.scale.setScalar(SC);
+  const group=new THREE.Group(), inner=new THREE.Group(); group.add(inner); scene.add(group); group.visible=false; const SC=0.82; group.scale.setScalar(SC);
   const bodyMat=physBody(0x2b2f52,{metalness:.35,roughness:.25,iridescence:.7,iridescenceIOR:1.5}), belly=physBody(0x8b86b8,{roughness:.45,normalScale:new THREE.Vector2(0.15,0.15)});
   const spikeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(1.6,0.2,1.3)}), eyeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(0.3,1.6,1.9)});
   const K=smoothKit(inner), {add,Sph,Cap,Cone,bone,beads}=K;
