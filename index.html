@@ -57,6 +57,10 @@ body.d3 #mute{color:#fff}
 #evo .txt{position:absolute;left:0;right:0;top:12%;text-align:center;font-family:'Rubik Mono One',sans-serif;font-size:clamp(26px,6vw,64px);color:#fff;text-shadow:0 0 20px #ff3cd0,0 0 50px #3cdcff;animation:shk .08s infinite}
 @keyframes shk{50%{transform:translate(2px,-2px)}}
 #turn{position:fixed;left:0;right:0;top:22%;text-align:center;font-family:'Rubik Mono One',sans-serif;font-size:clamp(28px,6vw,64px);color:#ffe27a;text-shadow:0 0 18px #ffb000,0 3px 0 rgba(0,0,0,.4);pointer-events:none;display:none;animation:qp .35s ease-in-out infinite alternate}
+#boss{position:fixed;left:50%;top:16px;transform:translateX(-50%);width:min(460px,70vw);text-align:center;display:none;pointer-events:none;color:#fff;font-size:10px;letter-spacing:.3em;text-shadow:0 0 10px #7fdcff}
+#boss .bb{height:10px;background:rgba(255,255,255,.15);margin:8px 0;border:1px solid rgba(255,255,255,.4)}
+#boss .bb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7fdcff,#e6f8ff);box-shadow:0 0 14px #7fdcff;transition:width .15s}
+#hearts{position:fixed;left:22px;top:104px;font-size:22px;letter-spacing:.2em;color:#ff5a6a;text-shadow:0 0 10px #ff2a40;display:none;pointer-events:none}
 #pop{position:fixed;left:0;right:0;top:44%;text-align:center;font-size:clamp(11px,1.8vw,18px);color:#fff;pointer-events:none;opacity:0;text-shadow:0 0 12px var(--glow,#ff7a2a)}
 #pop.show{animation:popa .9s ease-out forwards}
 @keyframes popa{0%{opacity:0;transform:translateY(10px) scale(1.4)}15%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-40px)}}
@@ -84,6 +88,8 @@ body.d3 #mute{color:#fff}
 <div id="qte"><div><span id="qteText">MASH SPACE TO CHARGE ULTRA BREATH</span><div class="qbar"><i id="qbar"></i></div></div></div>
 <div id="evo"><div class="rays"></div><div class="txt" id="evoTxt">DINO IS EVOLVING...</div></div>
 <div id="pop"></div>
+<div id="boss"><div class="bn">ICE TITAN</div><div class="bb"><i id="bossHp"></i></div></div>
+<div id="hearts">♥♥♥</div>
 <div id="turn"></div>
 <div id="breath"><span id="brLbl">FIRE BREATH · F</span><div class="bar"><i id="brBar"></i></div></div>
 <button id="fireBtn">🔥</button>
@@ -684,8 +690,8 @@ function genSeg(){
   T4.segs.push(seg); return seg;
 }
 function resetIce(){
-  for(const s of T4.segs) segG.remove(s.group);
-  Object.assign(T4,{segs:[],si:0,pend:0,yaw:0,camYaw:0,finalMade:false,wantFinal:false,finalSeg:null});
+  for(const s of T4.segs) segG.remove(s.group); if(typeof clearBoss==='function') clearBoss(); B.reached=false;
+  Object.assign(T4,{segs:[],si:0,pend:0,yaw:0,camYaw:0,finalMade:false,wantFinal:skipToBoss,finalSeg:null}); skipToBoss=false;
   titan.g.visible=false; iceSkyMat.uniforms.uDawn.value=0; pl.s=0;
   genSeg(); genSeg(); genSeg();
 }
@@ -728,7 +734,8 @@ function iceUpdate(dt){
   const n=dt*130; for(let q=0;q<Math.floor(n)+(rnd()<n%1?1:0);q++) emit(camera.position.x+(rnd()-.5)*70,camera.position.y+rnd()*22,camera.position.z+(rnd()-.5)*70,1.5+rnd(),-3-rnd()*2,(rnd()-.5),5,0.22,0.85,0.9,1.0,0,0,0);
   if(titan.g.visible){ titan.aL.rotation.x=-0.6+Math.sin(totalT*0.8)*0.2; titan.aR.rotation.x=-0.6+Math.cos(totalT*0.8)*0.2; }
   const seg=curSeg();
-  if(mode==='play'&&seg===T4.finalSeg&&pl.s>seg.L-70) startQTE();
+  if(mode==='play'&&seg===T4.finalSeg&&pl.s>seg.L-75) startBoss();
+  bossUpdate(dt);
   // turn indicator
   const ta=$('turn'); const near=mode==='play'&&seg.turn&&seg.L-pl.s<30&&seg.L-pl.s>-HW;
   let melt=false;
@@ -738,12 +745,88 @@ function iceUpdate(dt){
 }
 function updateBreath4(dt){
   if(stage===4&&mode==='play') energy=Math.min(100,energy+dt*FIRE_REGEN);
-  if(breathT<=0||mode!=='play'){ if(mode==='play'||mode==='dead') beamG.visible=false; return; }
+  if(mode==='boss'&&breathT>0){ breathT-=dt; bossBreath(dt); if(breathT<=0) beamG.visible=false; return; }
+  if(breathT<=0||mode!=='play'){ if(mode==='play'||mode==='dead'||mode==='boss') beamG.visible=false; return; }
   breathT-=dt; const seg=curSeg(); mouthWorld(_bf); const tp=segPos(seg,pl.s+70,pl.x,new THREE.Vector3()); _bt.set(tp.x,0.9,tp.z); placeBeam(_bf,_bt,0.85+0.15*Math.sin(totalT*50));
   for(const o of seg.obs){ if(o.alive&&o.s>pl.s-1&&o.s<pl.s+70&&(o.full||Math.abs(o.lx-pl.x)<1.7)) smash4(o,100,true); }
   for(let q=0;q<4;q++){ const k=rnd(); emit(lerp(_bf.x,_bt.x,k),lerp(_bf.y,_bt.y,k),lerp(_bf.z,_bt.z,k),(rnd()-.5)*6,rnd()*6,(rnd()-.5)*6,0.5,1.0,3,1.2,0.2,0,1,0); }
   if(breathT<=0) beamG.visible=false;
 }
+// ---------- BOSS FIGHT: the Ice Titan ----------
+const B={on:false,hp:100,hearts:3,inv:0,atkT:2,t:0,throwA:0,flashT:0,projs:[],reached:false};
+const BOSS_REGEN=15, BOSS_DMG=22;
+const bossRingMat=new THREE.MeshBasicMaterial({color:new THREE.Color(1.8,0.25,0.15),transparent:true,opacity:.85,side:THREE.DoubleSide,depthWrite:false});
+const boulderGeo=new THREE.IcosahedronGeometry(1.1,1), shardGeo=new THREE.ConeGeometry(0.28,1.6,6);
+let skipToBoss=false;
+function bossPos(s,lx,y){ const p=segPos(T4.finalSeg,s,lx,new THREE.Vector3()); p.y=y; return p; }
+function marker(s,lx){ const m=new THREE.Mesh(ringGeo,bossRingMat); m.rotation.x=-PI/2; m.position.copy(bossPos(s,lx,0.06)); m.scale.setScalar(1.3); iceG.add(m); return m; }
+function startBoss(){
+  mode='boss'; B.on=true; B.reached=true; B.hp=100; B.hearts=3; B.inv=0; B.atkT=2.2; B.t=0; B.projs=[]; energy=Math.max(energy,FIRE_COST);
+  $('turn').style.display='none'; $('boss').style.display='block'; $('hearts').style.display='block'; updBossHud();
+  banner('BOSS FIGHT','ICE TITAN','#7fdcff'); sfx('roar'); shake=1;
+  hint(TOUCH?'SWIPE ← → TO DODGE · TAP JUMP · 🔥 FIRE WHEN CHARGED':'← → DODGE  ·  SPACE JUMP  ·  F FIRE WHEN CHARGED');
+}
+function updBossHud(){ $('bossHp').style.width=Math.max(0,B.hp)+'%'; $('hearts').textContent='♥'.repeat(Math.max(0,B.hearts))+'♡'.repeat(3-Math.max(0,B.hearts)); }
+function hurtPlayer(){
+  if(B.inv>0||mode!=='boss') return; B.hearts--; B.inv=1.3; shake=1; flash(0.45,'#ff4a4a'); sfx('smash'); updBossHud();
+  const p=dino.group.position; burst(p.x,1.2,p.z,40,10,0.9,0.8,ICEC,0,-10);
+  if(B.hearts<=0){ mode='play'; die('boss'); }
+}
+function bossAttack(){
+  const enr=B.hp<40, r=rnd(), seg=T4.finalSeg;
+  const throwFrom=()=>{ titan.g.updateMatrixWorld(true); const v=new THREE.Vector3(0,-12,0); titan.aR.localToWorld(v); return v; };
+  if(r<0.5||B.t<4){ // boulders at your lane (plus a second one when enraged)
+    const lanes=[pl.lane]; if(enr&&rnd()<0.6) lanes.push(pick([-1,0,1].filter(l=>l!==pl.lane)));
+    for(const l of lanes){ const m=new THREE.Mesh(boulderGeo,iceObMat); m.castShadow=true; iceG.add(m); const from=throwFrom();
+      B.projs.push({kind:'boulder',lane:l,s:pl.s,t:0,dur:enr?1.15:1.4,from,mesh:m,mark:marker(pl.s,l*LANE_W),spin:new THREE.Vector3(rnd()*4,rnd()*4,rnd()*4)}); }
+    B.throwA=1; sfx('whoosh');
+  } else if(r<0.75){ // shockwave along the floor: jump it
+    const m=new THREE.Mesh(unitBox,iceWallMat); m.scale.set(W4,1.0,0.7); iceG.add(m);
+    B.projs.push({kind:'wave',s:seg.L+4,mesh:m,speed:enr?24:19}); sfx('rumble',1.2); shake=Math.max(shake,0.4);
+  } else { // icicle rain on two lanes: get to the third
+    const safe=pick([-1,0,1]); const lanes=[-1,0,1].filter(l=>l!==safe);
+    const marks=lanes.map(l=>marker(pl.s,l*LANE_W));
+    B.projs.push({kind:'rain',lanes,s:pl.s,t:0,delay:enr?0.9:1.15,marks,shards:[]}); sfx('warn');
+  }
+}
+function bossUpdate(dt){
+  if(!B.on) return;
+  B.t+=dt; B.inv=Math.max(0,B.inv-dt); B.flashT=Math.max(0,B.flashT-dt);
+  if(mode==='boss'){ energy=Math.min(100,energy+dt*BOSS_REGEN); B.atkT-=dt; if(B.atkT<=0){ bossAttack(); B.atkT=(B.hp<40?1.15:1.65)+rnd()*0.4; } }
+  if(mode==='boss') dino.group.visible=B.inv>0?Math.floor(B.inv*14)%2===0:true;
+  // titan animation
+  B.throwA=Math.max(0,B.throwA-dt*1.8); titan.aR.rotation.x=-0.6-Math.sin(B.throwA*PI)*1.8; titan.aL.rotation.x=-0.6+Math.sin(totalT*1.2)*0.25;
+  titan.mat.emissive.setRGB(0.04+B.flashT*2,0.18+B.flashT*1.2,0.3+B.flashT*0.6);
+  titan.g.position.copy(T4.titanBase).add(_v.set(B.flashT>0?(rnd()-.5)*0.8:0,0,0));
+  for(let i=B.projs.length-1;i>=0;i--){ const p=B.projs[i]; let done=false;
+    if(p.kind==='boulder'){ p.t+=dt; const k=Math.min(1,p.t/p.dur), to=bossPos(p.s,p.lane*LANE_W,0.9);
+      p.mesh.position.lerpVectors(p.from,to,k); p.mesh.position.y+=Math.sin(PI*k)*12; p.mesh.rotation.set(p.spin.x*p.t,p.spin.y*p.t,p.spin.z*p.t);
+      p.mark.material.opacity=0.5+0.4*Math.sin(p.t*20); if(rnd()<0.6) emit(p.mesh.position.x,p.mesh.position.y,p.mesh.position.z,(rnd()-.5)*2,(rnd()-.5)*2,(rnd()-.5)*2,0.6,0.7,1.0,1.2,1.5,0,1,0);
+      if(k>=1){ burst(to.x,0.8,to.z,50,12,1.1,0.9,ICEC,0,-12); sfx('boom',0.45); shake=Math.max(shake,0.45); if(pl.lane===p.lane&&pl.y<1.6) hurtPlayer(); iceG.remove(p.mesh); iceG.remove(p.mark); done=true; } }
+    else if(p.kind==='wave'){ p.s-=p.speed*dt; p.mesh.position.copy(bossPos(p.s,0,0.5)); p.mesh.rotation.y=yawOf(T4.finalSeg.dir);
+      if(rnd()<0.8){ const q=bossPos(p.s,(rnd()-.5)*W4,0.2); emit(q.x,q.y,q.z,(rnd()-.5)*2,2+rnd()*3,(rnd()-.5)*2,0.5,0.6,1.1,1.3,1.6,-6,1,0); }
+      if(Math.abs(p.s-pl.s)<0.7&&pl.y<1.0) hurtPlayer(); if(p.s<pl.s-12){ iceG.remove(p.mesh); done=true; } }
+    else if(p.kind==='rain'){ p.t+=dt; p.marks.forEach(m=>m.material.opacity=0.5+0.4*Math.sin(p.t*22));
+      if(p.t>p.delay&&!p.fell){ p.fell=true; for(const l of p.lanes) for(let q=0;q<3;q++){ const m=new THREE.Mesh(shardGeo,iceObMat); m.rotation.x=PI; m.position.copy(bossPos(p.s+(q-1)*0.9,l*LANE_W+(rnd()-.5)*0.8,14+q*1.5)); iceG.add(m); p.shards.push(m); } }
+      if(p.fell){ let all=true; for(const m of p.shards){ if(m.position.y>0.4){ m.position.y-=dt*30; all=false; } }
+        if(all&&!p.hit){ p.hit=true; for(const l of p.lanes){ const q=bossPos(p.s,l*LANE_W,0.5); burst(q.x,0.5,q.z,25,8,0.8,0.7,ICEC,0,-12); } sfx('smash'); if(p.lanes.includes(pl.lane)&&pl.y<2.2) hurtPlayer(); p.t2=0; }
+        if(p.hit){ p.t2+=dt; if(p.t2>0.4){ p.shards.forEach(m=>iceG.remove(m)); p.marks.forEach(m=>iceG.remove(m)); done=true; } } } }
+    if(done) B.projs.splice(i,1); }
+}
+function bossBreath(dt){
+  mouthWorld(_bf); placeBeam(_bf,T4.titanChest,1.1+0.2*Math.sin(totalT*50));
+  B.hp-=BOSS_DMG*dt/1.0; B.flashT=0.25; updBossHud();
+  const tp=T4.titanChest; for(let q=0;q<5;q++) emit(tp.x+(rnd()-.5)*6,tp.y+(rnd()-.5)*6,tp.z+(rnd()-.5)*6,(rnd()-.5)*10,(rnd()-.5)*10,(rnd()-.5)*10,0.6,1.6,3,1.4,0.3,0,1,0);
+  for(let q=0;q<4;q++){ const k=rnd(); emit(lerp(_bf.x,tp.x,k),lerp(_bf.y,tp.y,k),lerp(_bf.z,tp.z,k),(rnd()-.5)*6,rnd()*6,(rnd()-.5)*6,0.5,1.2,3,1.2,0.2,0,1,0); }
+  if(B.hp<=0) bossDefeat();
+}
+function bossDefeat(){
+  B.on=false; $('boss').style.display='none'; $('hearts').style.display='none'; beamG.visible=false; breathT=0; dino.group.visible=true;
+  B.projs.forEach(p=>{ [p.mesh,p.mark,...(p.marks||[]),...(p.shards||[])].forEach(m=>m&&iceG.remove(m)); }); B.projs=[];
+  mode='finale'; finale.t=1.75; finale.hit=true; flash(1,'#fff'); sfx('boom',1); sfx('die'); shake=2; const tp=T4.titanChest;
+  burst(tp.x,tp.y,tp.z,800,45,4,2.8,[[1.3,1.6,2],[2,2,2.2],[0.6,1.2,1.8],[3,1.4,0.4]],0,-10); titan.g.visible=false; score+=1000; pop('TITAN DOWN! +1000');
+}
+function clearBoss(){ $('hearts').style.display='none'; B.projs.forEach(p=>{ [p.mesh,p.mark,...(p.marks||[]),...(p.shards||[])].forEach(m=>m&&iceG.remove(m)); }); B.projs=[]; B.on=false; $('boss').style.display='none'; }
 function updateFinale4(dt){
   finale.t+=dt; const t=finale.t, tp=T4.titanChest;
   if(!finale.hit){
@@ -1146,7 +1229,7 @@ function jump3D(){
     for(let k=0;k<26;k++){ const a=k/26*TAU; emit(p.x,p.y+0.3,p.z,Math.cos(a)*6,0,Math.sin(a)*6,0.45,0.5,...(phase===3?pick(NEON):[3,1.6,0.4]),0,3,0); } }
 }
 function die(cause){
-  if(GOD&&cause==='fall'&&phase===4) return;
+  if(GOD&&cause==='fall'&&phase===4){ pl.y=0; pl.vy=0; pl.ground=true; return; }
   if(GOD&&cause==='lava'){ pl.y=0; pl.vy=0; pl.ground=true; return; }
   if(!pl.alive||mode!=='play'||GOD) return;
   pl.alive=false; mode='dead'; deadT=0; deathCause=cause; tsTarget=0.35; ts=0.2;
@@ -1386,7 +1469,7 @@ function updateEvolve(rdt){
   }
 }
 function fireBreath(){
-  if(phase!==4||stage<4||mode!=='play'||breathT>0) return;
+  if(phase!==4||stage<4||(mode!=='play'&&mode!=='boss')||breathT>0) return;
   if(energy<FIRE_COST){ pop('NOT ENOUGH FIRE · KEEP RUNNING'); return; }
   energy-=FIRE_COST; breathT=1.0; sfx('beam'); shake=Math.max(shake,0.35);
 }
@@ -1410,6 +1493,7 @@ function update3D(rdt){
   if(mode==='play') phaseT+=dt;
   if(mode==='play'){ const base=(phase===2?18+phaseT*0.22:phase===3?(29+phaseT*0.3)*(1+0.5*hyperK):21+phaseT*0.25)*speedMul; v=lerp(v,base,1-Math.exp(-dt*2)); }
   else if(mode==='dead'){ v*=Math.exp(-dt*2); }
+  else if(mode==='boss'){ v*=Math.exp(-dt*3); }
   else if(mode==='finale'||mode==='won'){ v=lerp(v,phase===4?0:6,1-Math.exp(-dt*2)); }
   if(mode==='dead'){ deadT+=rdt; if(deadT>1.4&&!panelOpen) showPanel('dead'); }
   if(mode==='qte'){ charge=Math.max(0,charge-rdt*0.06); $('qbar').style.width=(charge*100).toFixed(1)+'%'; dino.bodyMat.emissiveIntensity=1+charge*2; }
@@ -1423,7 +1507,7 @@ function update3D(rdt){
   if(phase===3) tubeUpdate(dt); else if(phase===4){ iceUpdate(dt); updateBreath4(dt); } else { laneUpdate(dt); updateBreath(dt); }
   // player
   const ducking=(downHeld||duckT>0)&&pl.ground&&phase!==3; duckT-=dt;
-  if(mode==='play'||mode==='qte'||mode==='reveal'){
+  if(mode==='play'||mode==='qte'||mode==='reveal'||mode==='boss'){
     if(phase===3){ pl.a+=(pl.aT-pl.a)*(1-Math.exp(-dt*13));
       if(!pl.ground){ pl.vy-=G*dt*(downHeld?1.8:1); pl.y+=pl.vy*dt; if(pl.y<=0){ pl.y=0; pl.vy=0; pl.ground=true; pl.jumps=0; sfx('land'); } } }
     else if(phase===4) iceMove(dt);
@@ -1462,7 +1546,7 @@ function update3D(rdt){
     else if(phase===4&&(mode==='finale'||mode==='won')){ camera.up.set(0,1,0); const P=dino.group.position, fx=-Math.sin(T4.camYaw), fz=-Math.cos(T4.camYaw);
       if(!finale.hit){ camBase.lerp(_gp.set(P.x-fx*13+(-fz)*7,3.2*sc,P.z-fz*13+fx*7),1-Math.exp(-rdt*3)); look.lerp(_v.set((P.x+T4.titanChest.x)/2,(2+T4.titanChest.y)/2,(P.z+T4.titanChest.z)/2),1-Math.exp(-rdt*4)); }
       else { camBase.lerp(_gp.set(P.x-fx*14,4.5+(sc-1)*2,P.z-fz*14),1-Math.exp(-rdt*2)); look.lerp(_v.set(P.x+fx*6,1.5,P.z+fz*6),1-Math.exp(-rdt*2)); } }
-    else if(phase===4){ gameCam(sc,camBase,look,_gu); camera.up.copy(_gu); if(mode==='qte'){ look.y=lerp(look.y,12,0.5); } }
+    else if(phase===4){ gameCam(sc,camBase,look,_gu); camera.up.copy(_gu); if(mode==='boss'||(mode==='dead'&&B.reached)){ const P=segPos(curSeg(),pl.s,pl.x*0.6), fx=-Math.sin(T4.camYaw), fz=-Math.cos(T4.camYaw); camBase.set(P.x-fx*11,6.2,P.z-fz*11); look.set(P.x+fx*18,3.2,P.z+fz*18); } }
     else if(mode==='finale'||mode==='won'){ camera.up.set(0,1,0);
       if(!finale.hit){ camBase.lerp(_gp.set(pl.x+7,2.4*sc,15),1-Math.exp(-rdt*3)); look.lerp(_v.set(0,meteor.g.position.y*0.45,meteor.g.position.z*0.45),1-Math.exp(-rdt*4)); }
       else { camBase.lerp(_gp.set(pl.x*0.5,4+(sc-1)*2,14),1-Math.exp(-rdt*2)); look.lerp(_v.set(0,1.5,-6),1-Math.exp(-rdt*2)); } }
@@ -1482,15 +1566,15 @@ function banner(k,t,c){ const b=$('banner'); b.style.setProperty('--c',c||'#ff5a
 let hintT=0; function hint(t){ $('hint').textContent=t; $('hint').classList.add('on'); hintT=5; }
 let flashCol='#fff'; function flash(a,c){ flashA=a; $('flash').style.background=c||'#fff'; }
 const pad=n=>String(Math.floor(n)).padStart(5,'0');
-const LINES={lava:'You fell in the lava. A classic.',rock:'Turns out rocks are hard.',pillar:'You ran into a pillar of fire. Bold.',hang:'Forgot to duck under the ice.',bat:'Bitten by a lava bat. Rough.',geyser:'Launched by a lava geyser.',fire:'The Titan\'s fireball got you.',tube:'Splattered across the hypertube.',meteor:'Hit by the apocalypse. Personally.',fall:'You missed the turn. Into the abyss.',wall:'Face-planted into an ice wall.',arch:'Forgot to duck.',spike:'Impaled by an icicle. Cold.',snowman:'Defeated by a snowman.',penguin:'Taken out by a penguin. Embarrassing.'};
+const LINES={lava:'You fell in the lava. A classic.',rock:'Turns out rocks are hard.',pillar:'You ran into a pillar of fire. Bold.',hang:'Forgot to duck under the ice.',boss:'The Ice Titan wins this round.',bat:'Bitten by a lava bat. Rough.',geyser:'Launched by a lava geyser.',fire:'The Titan\'s fireball got you.',tube:'Splattered across the hypertube.',meteor:'Hit by the apocalypse. Personally.',fall:'You missed the turn. Into the abyss.',wall:'Face-planted into an ice wall.',arch:'Forgot to duck.',spike:'Impaled by an icicle. Cold.',snowman:'Defeated by a snowman.',penguin:'Taken out by a penguin. Embarrassing.'};
 function showPanel(type){
   panelOpen=true; $('panel').classList.add('on'); $('phase').classList.remove('on'); $('hint').classList.remove('on');
   const st=$('pstats');
   if(type==='dead'){
     $('pk').textContent='PHASE '+phase+' · '+NAMES[phase]; $('pt').textContent='EXTINCT.'; $('ps').textContent=LINES[deathCause]||'Gone.';
     st.innerHTML=`<div>SCORE<b>${pad(score)}</b></div><div>BEST<b>${pad(hi)}</b></div>`;
-    $('b1').textContent='RETRY PHASE '+phase; $('b2').textContent='FROM THE 404';
-    $('b1').onclick=()=>{ hidePanel(); startPhase(phase); };
+    const boss=phase===4&&B.reached; $('b1').textContent=boss?'RETRY THE BOSS':'RETRY PHASE '+phase; $('b2').textContent='FROM THE 404';
+    $('b1').onclick=()=>{ hidePanel(); if(boss){ skipToBoss=true; stage=4; } startPhase(phase); if(boss) phaseT=DUR[4]; };
     $('b2').onclick=()=>{ hidePanel(); resetAll(); };
   } else {
     $('pk').textContent='YOU WIN'; $('pt').textContent='ICE AGE: CANCELLED'; $('ps').textContent='You melted the Ice Titan with your face. The dinosaurs live forever. Humans? Never heard of them.';
@@ -1510,8 +1594,8 @@ function hudTick(rdt){
   $('sc').textContent=pad(score); $('hi').textContent='HI '+pad(Math.max(hi,score));
   if(phase>=2){ $('phName').textContent='PHASE '+phase+' · '+NAMES[phase]; $('phBar').style.width=(clamp(phaseT/DUR[phase],0,1)*100).toFixed(1)+'%'; }
   hintT-=rdt; if(hintT<=0) $('hint').classList.remove('on');
-  const br=phase===4&&stage===4&&(mode==='play'||mode==='dead');
-  $('breath').style.display=br?'block':'none'; $('fireBtn').style.display=br&&TOUCH&&mode==='play'?'block':'none';
+  const br=phase===4&&stage===4&&(mode==='play'||mode==='dead'||mode==='boss');
+  $('breath').style.display=br?'block':'none'; $('fireBtn').style.display=br&&TOUCH&&(mode==='play'||mode==='boss')?'block':'none';
   if(br) $('brBar').style.width=energy.toFixed(0)+'%';
   if(flashA>0){ flashA=Math.max(0,flashA-rdt*1.4); $('flash').style.opacity=flashA; }
 }
@@ -1523,7 +1607,7 @@ function act(a){
   if(mode==='p1wait'){ if(a==='jump'){ mode='p1'; jump2D(); } return; }
   if(mode==='p1'){ if(a==='jump') jump2D(); if((a==='down'||a==='duckTap')&&!p1.ground) p1.vy=Math.min(p1.vy,-PX*400); return; }
   if(mode==='qte'){ if(a==='jump'||a==='fire') chargeUp(); return; }
-  if(mode!=='play') return;
+  if(mode!=='play'&&mode!=='boss') return;
   if(a==='fire') fireBreath();
   else if(a==='jump') jump3D();
   else if(a==='left'||a==='right'){ const d=a==='left'?-1:1;
@@ -1586,7 +1670,7 @@ function loop(now){
 }
 // warm up shaders once so the twist has no hitch
 composer.render(); requestAnimationFrame(loop);
-window.__game={get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
+window.__game={set bossHp(x){B.hp=x},get boss(){return {hp:B.hp,hearts:B.hearts,n:B.projs.length}},get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
 </script>
 </body>
 </html>
