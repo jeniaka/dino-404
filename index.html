@@ -85,7 +85,7 @@ body.d3 #mute{color:#fff}
 <div id="evo"><div class="rays"></div><div class="txt" id="evoTxt">DINO IS EVOLVING...</div></div>
 <div id="pop"></div>
 <div id="turn"></div>
-<div id="breath">FIRE BREATH<div class="bar"><i id="brBar"></i></div></div>
+<div id="breath"><span id="brLbl">FIRE BREATH · F</span><div class="bar"><i id="brBar"></i></div></div>
 <button id="fireBtn">🔥</button>
 <div id="flash"></div>
 <div id="panel"><div class="card">
@@ -132,7 +132,7 @@ const STAGE={
   1:{name:'DINO',body:0x7ad35e,em:0x0e2a08,spike:[3,1,0.12],eye:[3.5,0.25,0.1]},
   2:{name:'MEGA REX',body:0x2fa8c8,em:0x05252e,spike:[0.4,2.6,3.2],eye:[3.2,2.4,0.4],ability:'SMASHES ROCKS, BATS & LOW BLOCKS'},
   3:{name:'HYPER DRAKE',body:0x56607a,em:0x0c1222,spike:[1.6,0.2,1.3],eye:[0.3,1.6,1.9],wing:[1.4,0.15,1.1],ability:'SMASHES LOW STUFF  ·  TRIPLE JUMP'},
-  4:{name:'ULTRA REX',body:0xe09a28,em:0x241200,spike:[0.6,2.2,3],eye:[2.5,3,3.5],wing:[3,1.1,0.2],ability:TOUCH?'TAP 🔥 FIRE BREATH MELTS ICE WALLS · SWIPE AT CORNERS':'F = FIRE BREATH (MELTS ICE WALLS)  ·  ← → AT CORNERS TO TURN'},
+  4:{name:'SOLAR REX',body:0xe2a85a,em:0x1a0800,spike:[2,1.2,0.3],eye:[2.5,3,3.5],ability:TOUCH?'TAP 🔥 TO BREATHE FIRE · IT MELTS THE ICE IN YOUR LANE':'PRESS F TO BREATHE FIRE  ·  IT MELTS THE ICE IN YOUR LANE'},
 };
 try{hi=+localStorage.getItem('dino404_hi')||0}catch(e){}
 
@@ -584,7 +584,7 @@ function buildTitan(){
   return {g,aL,aR,mat};
 }
 const titan=buildTitan();
-function addIceOb(seg,kind,s,lane){
+function addIceOb(seg,kind,s,lane,beam){
   const lx=(lane||0)*LANE_W, o={kind,s,lx,lane,alive:true,ds:0.8,y0:0,y1:1.2,hw:1.05,full:false,t:rnd()*5,meshes:[]};
   const add=(m)=>{o.meshes.push(m); return m;};
   if(kind==='spike'){ for(let k=0;k<3;k++) add(put(seg,seg.group,spikeGeo,iceObMat,s+(k-1)*0.45,lx+(rnd()-.5)*0.9,0.7,1,1+rnd()*0.3,1)); o.y1=1.2; }
@@ -593,6 +593,10 @@ function addIceOb(seg,kind,s,lane){
     add(put(seg,seg.group,unitBox,iceObMat,s,-HW+0.3,1.7,0.6,3.4,0.6)); add(put(seg,seg.group,unitBox,iceObMat,s,HW-0.3,1.7,0.6,3.4,0.6));
     add(put(seg,seg.group,unitBox,iceWallMat,s,0,2.05,W4,0.9,0.8));
     for(let k=0;k<9;k++){ const m=add(put(seg,seg.group,icicleGeo,iceObMat,s,-HW+0.8+k*(W4-1.6)/8,1.35,1,1+rnd(),1)); m.rotation.x=PI; } }
+  else if(kind==='hang'){ o.y0=1.45; o.y1=3.4; o.ds=0.7;
+    if(beam){ add(put(seg,seg.group,unitBox,iceObMat,s,0,3.45,W4,0.3,0.45)); add(put(seg,seg.group,unitBox,iceObMat,s,-HW+0.3,1.75,0.45,3.5,0.45)); add(put(seg,seg.group,unitBox,iceObMat,s,HW-0.3,1.75,0.45,3.5,0.45)); }
+    add(put(seg,seg.group,unitBox,iceWallMat,s,lx,2.45,LANE_W*0.88,1.8,0.85));
+    for(let k=0;k<4;k++){ const m=add(put(seg,seg.group,icicleGeo,iceObMat,s,lx-LANE_W*0.33+k*LANE_W*0.22,1.35,1.1,1+rnd()*0.6,1.1)); m.rotation.x=PI; } }
   else if(kind==='snowman'){ o.y1=1.25; o.ds=0.7;
     add(put(seg,seg.group,sphereGeo,snowMat,s,lx,0.5,0.6,0.55,0.6)); add(put(seg,seg.group,sphereGeo,snowMat,s,lx,1.15,0.42,0.4,0.42)); add(put(seg,seg.group,sphereGeo,snowMat,s,lx,1.62,0.3,0.3,0.3));
     const n=add(put(seg,seg.group,coneGeo,orangeMat,s-0.32,lx,1.62,0.09,0.36,0.09)); n.rotation.x=-PI/2; n.rotation.order='YXZ';
@@ -619,11 +623,9 @@ function genSeg(){
     while(s<L-16){ const r=rnd();
       if(r<0.15+d*0.06&&s>HW+12){ const gl=3.2+rnd()*1.2; seg.gaps.push([s,s+gl]); s+=gl+11; continue; }
       const k=rnd();
-      if(k<0.24){ const lanes=shuffle([-1,0,1]).slice(0,d>0.4&&rnd()<0.4?2:1); lanes.forEach(l=>addIceOb(seg,'spike',s,l)); }
-      else if(k<0.48){ const lanes=shuffle([-1,0,1]).slice(0,rnd()<0.35+d*0.3?2:1); lanes.forEach(l=>addIceOb(seg,'wall',s,l)); }
+      if(k<0.36){ const lanes=shuffle([-1,0,1]).slice(0,rnd()<0.35+d*0.3?2:1); lanes.forEach(l=>addIceOb(seg,'wall',s,l)); }
       else if(k<0.62) addIceOb(seg,'arch',s,0);
-      else if(k<0.8) addIceOb(seg,'snowman',s,pick([-1,0,1]));
-      else addIceOb(seg,'penguin',s,pick([-1,0,1]));
+      else { const lanes=shuffle([-1,0,1]).slice(0,rnd()<0.45+d*0.3?2:1); lanes.forEach((l,i)=>addIceOb(seg,'hang',s,l,i===0)); }
       s+=lerp(22,14,d)+rnd()*8; } }
   // floor pieces
   const s0=first?-14:HW, s1=L+HW, cuts=[[s0,s1]];
@@ -694,7 +696,10 @@ function iceUpdate(dt){
   if(mode==='play'&&seg===T4.finalSeg&&pl.s>seg.L-70) startQTE();
   // turn indicator
   const ta=$('turn'); const near=mode==='play'&&seg.turn&&seg.L-pl.s<30&&seg.L-pl.s>-HW;
-  ta.style.display=near?'block':'none'; if(near) ta.textContent=T4.pend?'✓':(seg.turn<0?'⟵ TURN':'TURN ⟶');
+  let melt=false;
+  if(!near&&mode==='play'&&stage===4&&energy>=40&&breathT<=0){ for(const o of seg.obs){ const ds=o.s-pl.s; if(o.alive&&ds>10&&ds<42&&(o.kind==='wall'||o.kind==='hang')&&Math.abs(o.lx-pl.x)<1.2){ melt=true; break; } } }
+  ta.style.display=near||melt?'block':'none';
+  if(near) ta.textContent=T4.pend?'✓':(seg.turn<0?'⟵ TURN':'TURN ⟶'); else if(melt) ta.textContent=TOUCH?'🔥 TAP TO MELT':'🔥 PRESS F';
 }
 function updateBreath4(dt){
   if(stage===4&&mode==='play') energy=Math.min(100,energy+dt*16);
@@ -783,7 +788,44 @@ function buildForm(rows,o){
   const locals=[...bodyList,...spikeL,...eyeL];
   return {group,inner,meshes,bodyMat,spikeMat,eyeMat,wingMat,legs,legL:legs[0],legR:legs[1],wings,locals,run:0,scale:o.scale};
 }
-const forms={1:buildForm(DINO,{maxL:3,legW:2,scale:1,spikeL:[0]}),2:buildForm(MEGA,{maxL:3,legW:3,scale:1.3,spikeL:[-1,0,1]}),3:buildForm(DRAKE,{maxL:3,legW:3,scale:1.45,spikeL:[-1,0,1],wings:WING2,pad:4}),4:buildForm(ULTRA,{maxL:4,legW:3,scale:1.6,spikeL:[-1,0,1],wings:WING})};
+function buildSolar(){
+  const group=new THREE.Group(), inner=new THREE.Group(); group.add(inner); scene.add(group); group.visible=false; const SC=1.15; group.scale.setScalar(SC);
+  const bodyMat=new THREE.MeshPhysicalMaterial({color:0xe2a85a,roughness:.28,metalness:.15,clearcoat:1,clearcoatRoughness:.15,iridescence:.8,iridescenceIOR:1.4,sheen:.5,sheenColor:new THREE.Color(0xffc080)});
+  const spikeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(2,1.2,0.3)}), eyeMat=new THREE.MeshBasicMaterial({color:new THREE.Color(2.5,3,3.5)});
+  const parts=[];
+  const add=(geo,mat,pos,rot,scl,parent=inner)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(...pos); if(rot) m.rotation.set(...rot); if(scl) m.scale.set(...scl); m.castShadow=true; parent.add(m); parts.push(m); return m; };
+  const Sph=r=>new THREE.SphereGeometry(r,28,18), Cap=(r,l)=>new THREE.CapsuleGeometry(r,l,10,20);
+  add(Cap(0.5,1.0),bodyMat,[0,1.45,0.05],[PI/2-0.45,0,0]);
+  add(Sph(0.52),bodyMat,[0,1.72,-0.35],null,[1,1.05,1]);
+  add(Cap(0.26,0.55),bodyMat,[0,2.15,-0.62],[-0.55,0,0]);
+  add(Sph(0.34),bodyMat,[0,2.55,-0.9],null,[0.95,0.85,1.55]);
+  add(Sph(0.24),bodyMat,[0,2.36,-1.12],null,[0.85,0.5,1.5]);
+  add(Sph(0.07),eyeMat,[-0.24,2.66,-1.02]); add(Sph(0.07),eyeMat,[0.24,2.66,-1.02]);
+  for(const sx of [-1,1]) add(new THREE.ConeGeometry(0.08,0.8,16),spikeMat,[sx*0.2,2.88,-0.6],[0.95,0,-sx*0.35]);
+  [[2.32,-0.42,0.42],[2.02,-0.1,0.5],[1.98,0.25,0.55],[1.86,0.6,0.5],[1.66,1.0,0.44],[1.46,1.42,0.36],[1.32,1.86,0.3],[1.22,2.3,0.24],[1.18,2.74,0.18]]
+    .forEach(([y,z,sz])=>add(new THREE.ConeGeometry(0.11+sz*0.12,sz,10),spikeMat,[0,y+sz*0.38,z],[0.4,0,0]));
+  const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,1.45,0.6),new THREE.Vector3(0,1.28,1.4),new THREE.Vector3(0,1.12,2.2),new THREE.Vector3(0,1.1,2.9),new THREE.Vector3(0,1.32,3.45)]);
+  for(let i=0;i<16;i++){ const t=i/15, p=curve.getPoint(t); add(Sph(lerp(0.44,0.07,t)),bodyMat,[p.x,p.y,p.z]); }
+  { const p=curve.getPoint(1); add(new THREE.ConeGeometry(0.1,0.5,10),spikeMat,[p.x,p.y+0.2,p.z+0.05],[0.6,0,0]); }
+  for(const sx of [-1,1]) add(Cap(0.08,0.3),bodyMat,[sx*0.34,1.55,-0.78],[0.9,0,0]);
+  const legs=[];
+  for(const sx of [-1,1]){ const p=new THREE.Group(); p.position.set(sx*0.38,1.25,0.15); inner.add(p);
+    add(Cap(0.21,0.45),bodyMat,[0,-0.3,-0.05],[0.25,0,0],null,p); add(Cap(0.13,0.4),bodyMat,[0,-0.82,0.08],[-0.3,0,0],null,p); add(Sph(0.18),bodyMat,[0,-1.17,-0.12],null,[1,0.45,1.6],p); legs.push(p); }
+  const wingMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0}},transparent:true,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:`varying vec2 vU; void main(){ vU=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader:`uniform float uT; varying vec2 vU; void main(){ vec3 a=vec3(1.8,1.0,0.22), b=vec3(1.7,0.22,0.8); vec3 c=mix(a,b,vU.x)*(0.7+0.3*sin(vU.x*18.-uT*5.));
+      float al=smoothstep(0.,0.25,vU.y)*smoothstep(1.,0.55,vU.y)*(1.-vU.x*0.55)*0.8; gl_FragColor=vec4(c*al,al); }`});
+  const wings=[];
+  for(const sx of [-1,1]){ const p=new THREE.Group(); p.position.set(sx*0.42,1.92,0.0); p.scale.x=sx; inner.add(p);
+    for(let i=0;i<6;i++){ const len=2.6-i*0.22; const g=new THREE.PlaneGeometry(len,0.42); g.rotateX(-PI/2); g.translate(len/2,0,0); const m=new THREE.Mesh(g,wingMat); m.rotation.y=-i*0.2; m.position.y=-i*0.02; p.add(m); }
+    p.userData.side=sx; wings.push(p); }
+  // sample points for the shatter effect
+  group.updateMatrixWorld(true); const locals=[], v=new THREE.Vector3();
+  for(const m of parts){ const pa=m.geometry.attributes.position, step=Math.max(1,Math.floor(pa.count/40)); for(let i=0;i<pa.count;i+=step){ v.fromBufferAttribute(pa,i).applyMatrix4(m.matrixWorld); inner.worldToLocal(v); locals.push([v.x,v.y,v.z]); } }
+  if(locals.length>1200) locals.length=1200;
+  return {group,inner,meshes:[],bodyMat,spikeMat,eyeMat,wingMat,legs,legL:legs[0],legR:legs[1],wings,locals,run:0,scale:SC,smooth:true,mouth:new THREE.Vector3(0,2.36,-1.48)};
+}
+const forms={1:buildForm(DINO,{maxL:3,legW:2,scale:1,spikeL:[0]}),2:buildForm(MEGA,{maxL:3,legW:3,scale:1.3,spikeL:[-1,0,1]}),3:buildForm(DRAKE,{maxL:3,legW:3,scale:1.45,spikeL:[-1,0,1],wings:WING2,pad:4}),4:buildSolar()};
 let dino=forms[1]; dino.group.visible=true;
 function setForm(n){ for(const k in forms) forms[k].group.visible=false; stage=n; dino=forms[n]; dino.group.visible=true; }
 const dinoLight=new THREE.PointLight(0xfff0dd,14,14,1.5); scene.add(dinoLight);
@@ -821,7 +863,7 @@ const beamG=new THREE.Group(); scene.add(beamG); beamG.visible=false;
   const core=new THREE.Mesh(g1,new THREE.MeshBasicMaterial({color:new THREE.Color(3,3,2.6),transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false})); core.scale.set(0.35,0.35,1); beamG.add(core); }
 const _bf=new THREE.Vector3(), _bt=new THREE.Vector3();
 function placeBeam(from,to,w){ beamG.position.copy(from); beamG.lookAt(to); beamG.scale.set(w,w,from.distanceTo(to)); beamG.visible=true; }
-function mouthWorld(v){ v.set(0,1.5,-1.05); dino.inner.localToWorld(v); return v; }
+function mouthWorld(v){ if(dino.mouth) v.copy(dino.mouth); else v.set(0,1.5,-1.05); dino.inner.localToWorld(v); return v; }
 const pillar=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,60,28,1,true),new THREE.MeshBasicMaterial({color:new THREE.Color(1.1,1,1.5),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
 pillar.visible=false; scene.add(pillar);
 const hsl=(h)=>{ const c=new THREE.Color().setHSL(h%1,1,0.6); return [c.r*2,c.g*2,c.b*2]; };
@@ -883,7 +925,7 @@ function dinoColors(k=1){
   const S=STAGE[stage], f=dino;
   f.bodyMat.color.copy(lc(0x535353,S.body,k)); f.bodyMat.emissive.copy(lc(0x000000,S.em,k)); f.bodyMat.emissiveIntensity=1;
   f.spikeMat.color.setRGB(lerp(.33,S.spike[0],k),lerp(.33,S.spike[1],k),lerp(.33,S.spike[2],k));
-  f.eyeMat.color.setRGB(...S.eye); if(f.wingMat&&S.wing) f.wingMat.color.setRGB(...S.wing);
+  f.eyeMat.color.setRGB(...S.eye); if(f.wingMat&&f.wingMat.color&&S.wing) f.wingMat.color.setRGB(...S.wing);
 }
 function applyLook(n){
   setLook(LOOK[n],LOOK[n],1); lavaMat.uniforms.uInt.value=1; dinoColors(1); lavaSkyMat.uniforms.uK.value=1; sun.castShadow=n!==3;
@@ -1209,21 +1251,22 @@ function updateEvolve(rdt){
       explodeDino(true); dino.inner.rotation.y=0; dino.bodyMat.emissiveIntensity=1; const old=stage;
       setForm(evo.to); dinoColors(1); placeDino();
       for(const mm of dino.meshes){ mm.start=mm.list.map(p=>{ _v.set(rnd()-.5,rnd()-.5,rnd()-.5).normalize().multiplyScalar(2+rnd()*3); return [p[0]+_v.x,p[1]+_v.y+1,p[2]+_v.z]; }); mm.rot=mm.list.map(()=>[rnd()*6,rnd()*6,rnd()*6]); }
-      dino.legs.forEach(l=>l.scale.setScalar(0.01)); dino.wings.forEach(w=>w.scale.setScalar(0.01));
+      dino.legs.forEach(l=>l.scale.setScalar(0.01)); dino.wings.forEach(w=>w.scale.set(0.01*(w.userData.side||1),0.01,0.01)); if(dino.smooth) dino.inner.scale.setScalar(0.01);
       $('evoTxt').textContent=STAGE[old].name+' ▸ '+STAGE[evo.to].name+'!'; }
   } else {
     const k=1-Math.pow(1-clamp((t-1.3)/1.4,0,1),3);
     for(const mm of dino.meshes){ const n=mm.list.length; for(let i=0;i<n;i++){ const a=mm.start[i], b=mm.list[i], ro=mm.rot[i];
       _v.set(lerp(a[0],b[0],k),lerp(a[1],b[1],k),lerp(a[2],b[2],k)); qe.set(ro[0]*(1-k),ro[1]*(1-k),ro[2]*(1-k)); qq.setFromEuler(qe); qs.setScalar(1); qm.compose(_v,qq,qs); mm.im.setMatrixAt(i,qm); }
       mm.im.instanceMatrix.needsUpdate=true; }
-    dino.legs.forEach(l=>l.scale.setScalar(Math.max(0.01,k))); dino.wings.forEach(w=>{ w.scale.setScalar(Math.max(0.01,k)); w.rotation.z=w.userData.side*(0.4+0.5*Math.sin(t*14)); });
+    if(dino.smooth){ const kb=1+2.70158*Math.pow(k-1,3)+1.70158*Math.pow(k-1,2); dino.inner.scale.setScalar(Math.max(0.01,kb)); }
+    dino.legs.forEach(l=>l.scale.setScalar(Math.max(0.01,k))); dino.wings.forEach(w=>{ const q=Math.max(0.01,k); w.scale.set(q*(dino.smooth?w.userData.side:1),q,q); w.rotation.z=w.userData.side*(0.4+0.5*Math.sin(t*14)); });
     dino.inner.rotation.y=(1-k)*TAU*2;
     dino.bodyMat.emissive.copy(lc(0xffffff,STAGE[stage].em,k)); dino.bodyMat.emissiveIntensity=lerp(2.5,1,k);
     if(t>2.75&&!evo.roared){ evo.roared=true; sfx('roar'); shake=1; $('evo').classList.remove('on');
       for(let q=0;q<70;q++){ const a=q/70*TAU; emitLocal(0,0.4,0,Math.cos(a)*16,0.5,Math.sin(a)*16,0.8,1.0,hsl(q/70),1.5); }
       banner('DINO EVOLVED!',STAGE[stage].name,'#'+new THREE.Color(STAGE[stage].body).getHexString()); hint(STAGE[stage].ability); musicDuck(0.5); }
     dino.inner.rotation.x=t>2.75?0.3*Math.sin(PI*clamp((t-2.75)/1.0,0,1)):0;
-    if(t>=3.95){ dino.inner.rotation.set(0,0,0); pillar.visible=false; mode='play'; ts=tsTarget=1;
+    if(t>=3.95){ dino.inner.rotation.set(0,0,0); dino.inner.scale.set(1,1,1); pillar.visible=false; mode='play'; ts=tsTarget=1;
       for(let j=obs.length-1;j>=0;j--) if(obs[j].z>-45) removeOb(j);
       if(phase===4) for(const sg of T4.segs.slice(T4.si,T4.si+2)) for(const o of sg.obs) if(o.alive&&(sg!==curSeg()||o.s<pl.s+45)&&sg===curSeg()){ o.alive=false; o.meshes.forEach(m=>m.parent&&m.parent.remove(m)); }
       if(stage===4) energy=100; camA=pl.a; }
@@ -1287,6 +1330,7 @@ function update3D(rdt){
   if(v>0.5&&pl.ground) d.run+=dt*v*0.55/sc;
   const air=!pl.ground;
   d.legL.rotation.x=air?0.6:Math.sin(d.run)*0.9*Math.min(1,v/8); d.legR.rotation.x=air?0.4:-Math.sin(d.run)*0.9*Math.min(1,v/8);
+  if(d.wingMat&&d.wingMat.uniforms) d.wingMat.uniforms.uT.value=totalT;
   for(const w of d.wings) w.rotation.z=w.userData.side*(air?0.2+0.7*Math.sin(totalT*16):0.45+0.25*Math.sin(totalT*5));
   d.inner.position.y=pl.ground?Math.abs(Math.sin(d.run))*0.06:0;
   d.inner.scale.y=lerp(d.inner.scale.y,ducking?0.55:1,1-Math.exp(-dt*18));
@@ -1325,7 +1369,7 @@ function banner(k,t,c){ const b=$('banner'); b.style.setProperty('--c',c||'#ff5a
 let hintT=0; function hint(t){ $('hint').textContent=t; $('hint').classList.add('on'); hintT=5; }
 let flashCol='#fff'; function flash(a,c){ flashA=a; $('flash').style.background=c||'#fff'; }
 const pad=n=>String(Math.floor(n)).padStart(5,'0');
-const LINES={lava:'You fell in the lava. A classic.',rock:'Turns out rocks are hard.',pillar:'You ran into a pillar of fire. Bold.',bat:'Bitten by a lava bat. Rough.',geyser:'Launched by a lava geyser.',fire:'The Titan\'s fireball got you.',tube:'Splattered across the hypertube.',meteor:'Hit by the apocalypse. Personally.',fall:'You missed the turn. Into the abyss.',wall:'Face-planted into an ice wall.',arch:'Forgot to duck.',spike:'Impaled by an icicle. Cold.',snowman:'Defeated by a snowman.',penguin:'Taken out by a penguin. Embarrassing.'};
+const LINES={lava:'You fell in the lava. A classic.',rock:'Turns out rocks are hard.',pillar:'You ran into a pillar of fire. Bold.',hang:'Forgot to duck under the ice.',bat:'Bitten by a lava bat. Rough.',geyser:'Launched by a lava geyser.',fire:'The Titan\'s fireball got you.',tube:'Splattered across the hypertube.',meteor:'Hit by the apocalypse. Personally.',fall:'You missed the turn. Into the abyss.',wall:'Face-planted into an ice wall.',arch:'Forgot to duck.',spike:'Impaled by an icicle. Cold.',snowman:'Defeated by a snowman.',penguin:'Taken out by a penguin. Embarrassing.'};
 function showPanel(type){
   panelOpen=true; $('panel').classList.add('on'); $('phase').classList.remove('on'); $('hint').classList.remove('on');
   const st=$('pstats');
@@ -1390,6 +1434,7 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{ if(e.code==='ArrowDown'||e.code==='KeyS') downHeld=false; });
 let tStart=null;
+if(TOUCH) $('brLbl').textContent='FIRE BREATH · 🔥';
 $('fireBtn').addEventListener('pointerdown',e=>{ e.preventDefault(); act('fire'); });
 addEventListener('pointerdown',e=>{ if(e.target.closest&&e.target.closest('button')) return; tStart={x:e.clientX,y:e.clientY,done:false}; auInit(); });
 addEventListener('pointermove',e=>{ if(!tStart||tStart.done) return; const dx=e.clientX-tStart.x, dy=e.clientY-tStart.y;
