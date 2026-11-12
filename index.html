@@ -128,6 +128,7 @@ const GLOW={2:'#ff6a1f',3:'#ff2bd6',4:'#7fdcff'};
 let mode='p1wait', phase=1, phaseT=0, score=0, hi=0, speedMul=1, runs=0;
 let ts=1, tsTarget=1, shake=0, flashA=0, v=0, downHeld=false, duckT=0, panelOpen=false;
 let deadT=0, deathCause='', totalT=0, GOD=false, stage=1, energy=100;
+const FIRE_COST=60, FIRE_REGEN=3.5, FIRE_TURN=15;
 const STAGE={
   1:{name:'DINO',body:0x7ad35e,em:0x0e2a08,spike:[3,1,0.12],eye:[3.5,0.25,0.1]},
   2:{name:'MEGA REX',body:0x2fa8c8,em:0x05252e,spike:[0.4,2.6,3.2],eye:[3.2,2.4,0.4],ability:'SMASHES ROCKS, BATS & LOW BLOCKS'},
@@ -662,7 +663,8 @@ function iceGround(){ const seg=curSeg(); if(onSegTiles(seg,pl.s,pl.x)) return t
 function doTurn(){
   const seg=curSeg(), nxt=T4.segs[T4.si+1]; if(!nxt||!seg.turn) return;
   const ds=pl.s-seg.L, lx=pl.x; let s2,lx2; if(seg.turn<0){ s2=-lx; lx2=ds; } else { s2=lx; lx2=-ds; }
-  T4.si++; pl.s=s2; pl.x=lx2; pl.lane=clamp(Math.round(lx2/LANE_W),-1,1); T4.pend=0; sfx('whoosh'); score+=20; pop('TURN! +20');
+  T4.si++; pl.s=s2; pl.x=lx2; pl.lane=clamp(Math.round(lx2/LANE_W),-1,1); T4.pend=0; sfx('whoosh'); score+=20;
+  if(stage===4){ energy=Math.min(100,energy+FIRE_TURN); pop('TURN! +20 · 🔥+'+FIRE_TURN); } else pop('TURN! +20');
 }
 const lerpAng=(a,b,k)=>{ let d=b-a; while(d>PI) d-=TAU; while(d<-PI) d+=TAU; return a+d*k; };
 function iceMove(dt){
@@ -697,12 +699,12 @@ function iceUpdate(dt){
   // turn indicator
   const ta=$('turn'); const near=mode==='play'&&seg.turn&&seg.L-pl.s<30&&seg.L-pl.s>-HW;
   let melt=false;
-  if(!near&&mode==='play'&&stage===4&&energy>=40&&breathT<=0){ for(const o of seg.obs){ const ds=o.s-pl.s; if(o.alive&&ds>10&&ds<42&&(o.kind==='wall'||o.kind==='hang')&&Math.abs(o.lx-pl.x)<1.2){ melt=true; break; } } }
+  if(!near&&mode==='play'&&stage===4&&energy>=FIRE_COST&&breathT<=0){ for(const o of seg.obs){ const ds=o.s-pl.s; if(o.alive&&ds>10&&ds<42&&(o.kind==='wall'||o.kind==='hang')&&Math.abs(o.lx-pl.x)<1.2){ melt=true; break; } } }
   ta.style.display=near||melt?'block':'none';
   if(near) ta.textContent=T4.pend?'✓':(seg.turn<0?'⟵ TURN':'TURN ⟶'); else if(melt) ta.textContent=TOUCH?'🔥 TAP TO MELT':'🔥 PRESS F';
 }
 function updateBreath4(dt){
-  if(stage===4&&mode==='play') energy=Math.min(100,energy+dt*16);
+  if(stage===4&&mode==='play') energy=Math.min(100,energy+dt*FIRE_REGEN);
   if(breathT<=0||mode!=='play'){ if(mode==='play'||mode==='dead') beamG.visible=false; return; }
   breathT-=dt; const seg=curSeg(); mouthWorld(_bf); const tp=segPos(seg,pl.s+70,pl.x,new THREE.Vector3()); _bt.set(tp.x,0.9,tp.z); placeBeam(_bf,_bt,0.85+0.15*Math.sin(totalT*50));
   for(const o of seg.obs){ if(o.alive&&o.s>pl.s-1&&o.s<pl.s+70&&(o.full||Math.abs(o.lx-pl.x)<1.7)) smash4(o,100,true); }
@@ -1269,16 +1271,16 @@ function updateEvolve(rdt){
     if(t>=3.95){ dino.inner.rotation.set(0,0,0); dino.inner.scale.set(1,1,1); pillar.visible=false; mode='play'; ts=tsTarget=1;
       for(let j=obs.length-1;j>=0;j--) if(obs[j].z>-45) removeOb(j);
       if(phase===4) for(const sg of T4.segs.slice(T4.si,T4.si+2)) for(const o of sg.obs) if(o.alive&&(sg!==curSeg()||o.s<pl.s+45)&&sg===curSeg()){ o.alive=false; o.meshes.forEach(m=>m.parent&&m.parent.remove(m)); }
-      if(stage===4) energy=100; camA=pl.a; }
+      if(stage===4) energy=FIRE_COST; camA=pl.a; }
   }
 }
 function fireBreath(){
   if(phase!==4||stage<4||mode!=='play'||breathT>0) return;
-  if(energy<40){ pop('NOT ENOUGH FIRE'); return; }
-  energy-=40; breathT=1.0; sfx('beam'); shake=Math.max(shake,0.35);
+  if(energy<FIRE_COST){ pop('NOT ENOUGH FIRE · KEEP RUNNING'); return; }
+  energy-=FIRE_COST; breathT=1.0; sfx('beam'); shake=Math.max(shake,0.35);
 }
 function updateBreath(dt){
-  if(phase===4&&stage===4&&mode==='play') energy=Math.min(100,energy+dt*16);
+  if(phase===4&&stage===4&&mode==='play') energy=Math.min(100,energy+dt*FIRE_REGEN);
   if(breathT<=0||mode!=='play'){ if(mode==='play'||mode==='dead') beamG.visible=false; return; }
   breathT-=dt; mouthWorld(_bf); _bt.set(pl.x,0.9,-75); placeBeam(_bf,_bt,0.85+0.15*Math.sin(totalT*50));
   for(let j=obs.length-1;j>=0;j--){ const o=obs[j]; if(Math.abs(o.x-pl.x)<1.7&&o.z<1.5&&o.z>-75&&o.kind!=='fire'||(o.kind==='fire'&&o.deadly&&Math.abs(o.x-pl.x)<1.7&&o.z<1.5)) smashOb(o,100,true); }
