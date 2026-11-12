@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 #p1top .msg{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:clamp(14px,2vw,18px);color:#5f6368;line-height:1.6}
 #p1top .msg b{color:#202124;font-weight:600}
 #p1top .err{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:12px;color:#9aa0a6;margin-top:12px;letter-spacing:.05em}
-#score{position:fixed;top:20px;right:22px;font-size:clamp(10px,1.5vw,15px);letter-spacing:.06em;color:#535353;text-align:right;white-space:nowrap}
+#score{position:fixed;top:20px;right:22px;cursor:default;padding:6px;margin:-6px;z-index:5;font-size:clamp(10px,1.5vw,15px);letter-spacing:.06em;color:#535353;text-align:right;white-space:nowrap}
 #score .hi{opacity:.55;margin-right:14px}
 #score.blink{animation:blink .9s steps(2) 1}
 @keyframes blink{50%{opacity:0}}
@@ -1432,11 +1432,24 @@ addEventListener('keydown',e=>{
   else if(k==='ArrowDown'||k==='KeyS'){ downHeld=true; act('down'); }
   else if(k==='KeyF'||k==='KeyX') act('fire');
 });
+// ---- secret level select: type 222/333/444, or tap the score 2/3/4 times ----
+function secretJump(n){
+  auInit(); if(panelOpen) hidePanel();
+  cv2.style.display='none'; cv3.style.opacity=1; $('p1top').style.opacity=0; document.body.classList.add('d3'); $('qte').style.display='none';
+  if(n===3&&stage<2) setForm(2); if(n===4&&stage<3) setForm(3);
+  flash(1,'#fff'); sfx('portal'); startPhase(n);
+}
+let secBuf='';
+addEventListener('keydown',e=>{ if(!/^Digit[234]$/.test(e.code)) return; secBuf=(secBuf+e.code.slice(-1)).slice(-3);
+  if(secBuf==='222'||secBuf==='333'||secBuf==='444'){ const n=+secBuf[0]; secBuf=''; secretJump(n); } });
+let secTaps=0, secT=null;
+$('score').addEventListener('pointerdown',e=>{ e.stopPropagation(); secTaps++; clearTimeout(secT);
+  secT=setTimeout(()=>{ const n=secTaps; secTaps=0; if(n>=2&&n<=4) secretJump(n); },700); });
 addEventListener('keyup',e=>{ if(e.code==='ArrowDown'||e.code==='KeyS') downHeld=false; });
 let tStart=null;
 if(TOUCH) $('brLbl').textContent='FIRE BREATH · 🔥';
 $('fireBtn').addEventListener('pointerdown',e=>{ e.preventDefault(); act('fire'); });
-addEventListener('pointerdown',e=>{ if(e.target.closest&&e.target.closest('button')) return; tStart={x:e.clientX,y:e.clientY,done:false}; auInit(); });
+addEventListener('pointerdown',e=>{ if(e.target.closest&&(e.target.closest('button')||e.target.closest('#score'))) return; tStart={x:e.clientX,y:e.clientY,done:false}; auInit(); });
 addEventListener('pointermove',e=>{ if(!tStart||tStart.done) return; const dx=e.clientX-tStart.x, dy=e.clientY-tStart.y;
   if(Math.hypot(dx,dy)>34){ tStart.done=true; if(Math.abs(dx)>Math.abs(dy)) act(dx>0?'right':'left'); else if(dy>0) act('duckTap'); else act('jump'); } });
 addEventListener('pointerup',()=>{ if(tStart&&!tStart.done) act('jump'); tStart=null; });
