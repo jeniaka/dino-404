@@ -139,8 +139,8 @@ let deadT=0, deathCause='', totalT=0, GOD=false, stage=1, energy=100;
 const FIRE_COST=60, FIRE_REGEN=3.5, FIRE_TURN=15;
 const STAGE={
   1:{name:'DINO',body:0x7ad35e,em:0x0e2a08,spike:[3,1,0.12],eye:[3.5,0.25,0.1]},
-  2:{name:'MEGA REX',body:0x1f6f86,em:0x021418,spike:[0.4,2.6,3.2],eye:[3.2,2.4,0.4],ability:'SMASHES ROCKS, BATS & LOW BLOCKS'},
-  3:{name:'HYPER DRAKE',body:0x2b2f52,em:0x0a0618,spike:[1.6,0.2,1.3],eye:[0.3,1.6,1.9],ability:'SMASHES LOW STUFF  ·  TRIPLE JUMP'},
+  2:{name:'MEGA REX',body:0x1f6f86,em:0x021418,spike:[0.4,2.6,3.2],eye:[3.2,2.4,0.4],ability:'LOOKS COOL  ·  STILL AVOID EVERYTHING'},
+  3:{name:'HYPER DRAKE',body:0x2b2f52,em:0x0a0618,spike:[1.6,0.2,1.3],eye:[0.3,1.6,1.9],ability:'EAT THE PINK BLOCKS FOR BONUS  ·  TRIPLE JUMP'},
   4:{name:'SOLAR REX',body:0xe2a85a,em:0x1a0800,spike:[2,1.2,0.3],eye:[2.5,3,3.5],ability:TOUCH?'TAP 🔥 TO BREATHE FIRE · IT MELTS THE ICE IN YOUR LANE':'PRESS F TO BREATHE FIRE  ·  IT MELTS THE ICE IN YOUR LANE'},
 };
 try{hi=+localStorage.getItem('dino404_hi')||0}catch(e){}
@@ -642,11 +642,11 @@ function addIceOb(seg,kind,s,lane,beam){
     const n=add(put(seg,seg.group,coneGeo,orangeMat,s-0.32,lx,1.62,0.09,0.36,0.09)); n.rotation.x=-PI/2; n.rotation.order='YXZ';
     add(put(seg,seg.group,unitBox,blackMat,s-0.26,lx-0.11,1.72,0.06,0.06,0.05)); add(put(seg,seg.group,unitBox,blackMat,s-0.26,lx+0.11,1.72,0.06,0.06,0.05));
     add(put(seg,seg.group,unitBox,blackMat,s,lx,1.98,0.42,0.36,0.42)); }
-  else if(kind==='penguin'){ o.y1=1.4; o.hw=0.9; o.vx=(rnd()<.5?-1:1)*(1.6+rnd()); o.ds=0.6;
+  else if(kind==='penguin'){ o.y1=1.6; o.hw=1.1; o.vx=(rnd()<.5?-1:1)*(0.8+rnd()*0.6); o.ds=0.8; o.snack=true;
     const g=new THREE.Group(); const b=new THREE.Mesh(sphereGeo,blackMat); b.scale.set(0.5,0.72,0.45); b.position.y=0.72; const bl=new THREE.Mesh(sphereGeo,snowMat); bl.scale.set(0.38,0.58,0.3); bl.position.set(0,0.66,-0.2);
     const bk=new THREE.Mesh(coneGeo,orangeMat); bk.scale.set(0.1,0.3,0.1); bk.rotation.x=-PI/2; bk.position.set(0,1.18,-0.45); const f1=new THREE.Mesh(unitBox,orangeMat); f1.scale.set(0.22,0.08,0.3); f1.position.set(-0.18,0.04,-0.12); const f2=f1.clone(); f2.position.x=0.18;
     const e1=new THREE.Mesh(sphereGeo,snowMat); e1.scale.setScalar(0.07); e1.position.set(-0.13,1.3,-0.36); const e2=e1.clone(); e2.position.x=0.13;
-    g.add(b,bl,bk,f1,f2,e1,e2); g.scale.setScalar(1.5); seg.group.add(g); o.pg=g; add(g); placePenguin(seg,o); }
+    g.add(b,bl,bk,f1,f2,e1,e2); g.scale.setScalar(0.95); seg.group.add(g); o.pg=g; add(g); placePenguin(seg,o); }
   seg.obs.push(o); return o;
 }
 function placePenguin(seg,o){ const p=segPos(seg,o.s,o.lx,_pp); o.pg.position.set(p.x,0,p.z); o.pg.rotation.set(0,yawOf(seg.dir)+PI+(o.vx>0?-0.6:0.6),Math.sin(o.t*10)*0.15); }
@@ -666,7 +666,9 @@ function genSeg(){
       if(k<0.36){ const lanes=shuffle([-1,0,1]).slice(0,rnd()<0.35+d*0.3?2:1); lanes.forEach(l=>addIceOb(seg,'wall',s,l)); }
       else if(k<0.62) addIceOb(seg,'arch',s,0);
       else { const lanes=shuffle([-1,0,1]).slice(0,rnd()<0.45+d*0.3?2:1); lanes.forEach((l,i)=>addIceOb(seg,'hang',s,l,i===0)); }
-      s+=lerp(22,14,d)+rnd()*8; } }
+      const gapAfter=lerp(22,14,d)+rnd()*8;
+      if(rnd()<0.45&&s+9<L-16) addIceOb(seg,'penguin',s+gapAfter*0.5,pick([-1,0,1]));
+      s+=gapAfter; } }
   // floor pieces
   const s0=first?-14:HW, s1=L+HW, cuts=[[s0,s1]];
   for(const g of seg.gaps){ const c=cuts.pop(); cuts.push([c[0],g[0]],[g[1],c[1]]); }
@@ -720,10 +722,11 @@ const ICEC=[[1.1,1.35,1.6],[0.8,1.1,1.4],[1.4,1.4,1.5]];
 function smash4(o,pts,big){ if(!o.alive) return; o.alive=false; const seg=T4.segs.find(s=>s.obs.includes(o)); const p=segPos(seg||curSeg(),o.s,o.lx,new THREE.Vector3());
   o.meshes.forEach(m=>m.parent&&m.parent.remove(m)); burst(p.x,1,p.z,big?60:40,big?16:11,big?1.3:0.9,0.9,ICEC,0,-12);
   score+=pts; sfx('smash'); shake=Math.max(shake,big?0.45:0.3); pop((big?'MELTED! +':'SMASH! +')+pts); }
-const canSmash4=k=>stage>=2&&(k==='spike'||k==='snowman'||k==='penguin');
+const canSmash4=k=>false;
+function eatPenguin(o){ if(!o.alive) return; o.alive=false; o.meshes.forEach(m=>m.parent&&m.parent.remove(m)); const p=dino.group.position; burst(p.x,1.2,p.z,24,6,0.6,0.6,[[1.4,1.4,1.5],[0.3,0.3,0.4],[1.8,0.9,0.2]],0,-6); score+=100; if(stage===4) energy=Math.min(100,energy+8); sfx('point'); pop('YUM! PENGUIN +100'); }
 function iceCollide(ducking){ const seg=curSeg(), top=pl.y+(ducking?1.15:2.15);
   for(const o of seg.obs){ if(!o.alive) continue; if(Math.abs(o.s-pl.s)>o.ds+0.7) continue; if(!o.full&&Math.abs(o.lx-pl.x)>o.hw) continue;
-    if(pl.y<o.y1&&top>o.y0){ if(canSmash4(o.kind)) smash4(o,50); else die(o.kind); return; } } }
+    if(pl.y<o.y1&&top>o.y0){ if(o.snack){ eatPenguin(o); continue; } if(canSmash4(o.kind)) smash4(o,50); else die(o.kind); return; } } }
 function iceUpdate(dt){
   T4.wantFinal=phaseT>=DUR[4]-6;
   const ahead=()=>{ let a=curSeg().L-pl.s; for(let i=T4.si+1;i<T4.segs.length;i++) a+=T4.segs[i].L; return a; };
@@ -748,7 +751,7 @@ function updateBreath4(dt){
   if(mode==='boss'&&breathT>0){ breathT-=dt; bossBreath(dt); if(breathT<=0) beamG.visible=false; return; }
   if(breathT<=0||mode!=='play'){ if(mode==='play'||mode==='dead'||mode==='boss') beamG.visible=false; return; }
   breathT-=dt; const seg=curSeg(); mouthWorld(_bf); const tp=segPos(seg,pl.s+70,pl.x,new THREE.Vector3()); _bt.set(tp.x,0.9,tp.z); placeBeam(_bf,_bt,0.85+0.15*Math.sin(totalT*50));
-  for(const o of seg.obs){ if(o.alive&&o.s>pl.s-1&&o.s<pl.s+70&&(o.full||Math.abs(o.lx-pl.x)<1.7)) smash4(o,100,true); }
+  for(const o of seg.obs){ if(o.alive&&!o.snack&&o.s>pl.s-1&&o.s<pl.s+70&&(o.full||Math.abs(o.lx-pl.x)<1.7)) smash4(o,100,true); }
   for(let q=0;q<4;q++){ const k=rnd(); emit(lerp(_bf.x,_bt.x,k),lerp(_bf.y,_bt.y,k),lerp(_bf.z,_bt.z,k),(rnd()-.5)*6,rnd()*6,(rnd()-.5)*6,0.5,1.0,3,1.2,0.2,0,1,0); }
   if(breathT<=0) beamG.visible=false;
 }
@@ -1333,7 +1336,7 @@ function laneUpdate(dt){
   if(phase===2&&rnd()<dt*90) emit((rnd()-.5)*90,-2.6,-rnd()*140,(rnd()-.5)*1.5,2+rnd()*4,(rnd()-.5),2.5+rnd()*2,0.25+rnd()*0.35,3,0.7+rnd()*0.5,0.1,0.4,0.2,1);
   if(phase===2&&rnd()<dt*3){ const vt=pick(volTops); burst(vt.x,vt.y,vt.z,20,18,6,2.2,FIRE,0,-10); }
 }
-const canSmash=k=>stage>=2&&(k==='rock'||k==='bat'||k==='fire'||k==='tblock');
+const canSmash=k=>phase===3&&k==='tblock';
 let popT=0; function pop(t){ const e=$('pop'); e.textContent=t; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show'); }
 function smashOb(o,pts,big){ const i=obs.indexOf(o); if(i<0) return;
   const p=phase===3?dino.group.position:{x:o.x,y:o.kind==='bat'?2.4:0.8,z:o.z};
@@ -1670,7 +1673,7 @@ function loop(now){
 }
 // warm up shaders once so the twist has no hitch
 composer.render(); requestAnimationFrame(loop);
-window.__game={set bossHp(x){B.hp=x},get boss(){return {hp:B.hp,hearts:B.hearts,n:B.projs.length}},get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
+window.__game={get pengs(){return T4.segs.flatMap(sg=>sg.obs.filter(o=>o.snack).map(o=>[T4.segs.indexOf(sg),Math.round(o.s),+o.lx.toFixed(1),o.alive]))},set bossHp(x){B.hp=x},get boss(){return {hp:B.hp,hearts:B.hearts,n:B.projs.length}},get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
 </script>
 </body>
 </html>
