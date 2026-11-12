@@ -1055,7 +1055,7 @@ function setupPhase(n){
   laneG.visible=n===2; tubeG.visible=n===3; sky4.visible=false; volG.visible=n===2; iceG.visible=n===4; if(n===4) resetIce(); $('turn').style.display='none';
   meteor.g.visible=true; meteor.g.position.set(0,90,-480); meteor.g.scale.setScalar(1);
   tubeMat.uniforms.uFade.value=1; tubeMat.uniforms.uCA.value=0; hyperK=0; hyperBan=false; beamG.visible=false; pillar.visible=false; breathT=0; energy=100; $('evo').classList.remove('on'); $('qte').style.display='none';
-  setForm(stage); debris.visible=false; dino.inner.scale.set(1,1,1); dino.inner.rotation.set(0,0,0); camBase.set(0,4.6+(dino.scale-1)*2,9.5+(dino.scale-1)*3);
+  setForm(n===2?clamp(stage,1,2):clamp(stage,n-1,n)); debris.visible=false; dino.inner.scale.set(1,1,1); dino.inner.rotation.set(0,0,0); camBase.set(0,4.6+(dino.scale-1)*2,9.5+(dino.scale-1)*3);
   applyLook(n); camA=0; camera.up.set(0,1,0); ts=tsTarget=1;
 }
 function startPhase(n,drop){
@@ -1383,7 +1383,7 @@ function showPanel(type){
     $('pk').textContent='YOU WIN'; $('pt').textContent='ICE AGE: CANCELLED'; $('ps').textContent='You melted the Ice Titan with your face. The dinosaurs live forever. Humans? Never heard of them.';
     st.innerHTML=`<div>SCORE<b>${pad(score)}</b></div><div>BEST<b>${pad(hi)}</b></div><div>LOOP<b>×${(speedMul).toFixed(2)}</b></div>`;
     $('b1').textContent='AGAIN, BUT FASTER'; $('b2').textContent='BACK TO THE 404';
-    $('b1').onclick=()=>{ hidePanel(); speedMul*=1.2; startPhase(2); };
+    $('b1').onclick=()=>{ hidePanel(); speedMul*=1.2; stage=1; startPhase(2); };
     $('b2').onclick=()=>{ hidePanel(); resetAll(); };
   }
 }
@@ -1436,8 +1436,7 @@ addEventListener('keydown',e=>{
 function secretJump(n){
   auInit(); if(panelOpen) hidePanel();
   cv2.style.display='none'; cv3.style.opacity=1; $('p1top').style.opacity=0; document.body.classList.add('d3'); $('qte').style.display='none';
-  if(n===3&&stage<2) setForm(2); if(n===4&&stage<3) setForm(3);
-  flash(1,'#fff'); sfx('portal'); startPhase(n);
+  stage=n===2?1:n-1; flash(1,'#fff'); sfx('portal'); startPhase(n);
 }
 let secBuf='';
 addEventListener('keydown',e=>{ if(!/^Digit[234]$/.test(e.code)) return; secBuf=(secBuf+e.code.slice(-1)).slice(-3);
