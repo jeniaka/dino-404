@@ -695,7 +695,7 @@ function resetIce(){
   for(const s of T4.segs) segG.remove(s.group); if(typeof clearBoss==='function') clearBoss(); B.reached=false;
   Object.assign(T4,{segs:[],si:0,pend:0,yaw:0,camYaw:0,finalMade:false,wantFinal:skipToBoss,finalSeg:null}); skipToBoss=false;
   titan.g.visible=false; iceSkyMat.uniforms.uDawn.value=0; pl.s=0;
-  genSeg(); genSeg(); genSeg();
+  genSeg(); while(T4.segs.length<3&&!T4.finalMade) genSeg();
 }
 const curSeg=()=>T4.segs[T4.si];
 function onSegTiles(seg,s,lx){ if(Math.abs(lx)>HW+0.2) return false; const s0=seg.first?-14:HW; if(s<s0-0.3||s>seg.L+HW+0.3) return false; for(const g of seg.gaps) if(s>g[0]+0.2&&s<g[1]-0.2) return false; return true; }
@@ -826,7 +826,8 @@ function bossBreath(dt){
 function bossDefeat(){
   B.on=false; $('boss').style.display='none'; $('hearts').style.display='none'; beamG.visible=false; breathT=0; dino.group.visible=true;
   B.projs.forEach(p=>{ [p.mesh,p.mark,...(p.marks||[]),...(p.shards||[])].forEach(m=>m&&iceG.remove(m)); }); B.projs=[];
-  mode='finale'; finale.t=1.75; finale.hit=true; flash(1,'#fff'); sfx('boom',1); sfx('die'); shake=2; const tp=T4.titanChest;
+  $('hint').classList.remove('on'); hintT=0;
+  mode='finale'; finale.t=1.75; finale.hit=true; finale.roar=finale.launch=finale.fire=finale.ban=false; flash(1,'#fff'); sfx('boom',1); sfx('die'); shake=2; const tp=T4.titanChest;
   burst(tp.x,tp.y,tp.z,800,45,4,2.8,[[1.3,1.6,2],[2,2,2.2],[0.6,1.2,1.8],[3,1.4,0.4]],0,-10); titan.g.visible=false; score+=1000; pop('TITAN DOWN! +1000');
 }
 function clearBoss(){ $('hearts').style.display='none'; B.projs.forEach(p=>{ [p.mesh,p.mark,...(p.marks||[]),...(p.shards||[])].forEach(m=>m&&iceG.remove(m)); }); B.projs=[]; B.on=false; $('boss').style.display='none'; }
@@ -840,9 +841,24 @@ function updateFinale4(dt){
     for(let q=0;q<5;q++) emit(tp.x+(rnd()-.5)*14,tp.y+(rnd()-.5)*20,tp.z+(rnd()-.5)*14,(rnd()-.5)*3,-2-rnd()*4,(rnd()-.5)*3,1.2,1.6,0.8,1.0,1.3,-6,0.5,0);
     if(t>1.7){ finale.hit=true; beamG.visible=false; flash(1,'#fff'); sfx('boom',1); sfx('die'); shake=2;
       burst(tp.x,tp.y,tp.z,800,45,4,2.8,[[1.3,1.6,2],[2,2,2.2],[0.6,1.2,1.8],[3,1.4,0.4]],0,-10); titan.g.visible=false; } }
-  else { dino.inner.rotation.x=lerp(dino.inner.rotation.x,0,1-Math.exp(-dt*3));
-    const k=smooth((t-1.8)/3); iceSkyMat.uniforms.uDawn.value=k; scene.fog.color.copy(lc(0x10203a,0xd8b8a8,k)); hemi.intensity=lerp(1.05,1.8,k);
-    if(t>5.6&&mode==='finale'){ mode='won'; saveHi(); sfx('win'); setTrack(null); showPanel('win'); } }
+  else {
+    const k=smooth((t-1.8)/3); iceSkyMat.uniforms.uDawn.value=k; scene.fog.color.copy(lc(0x10203a,0x7a5a66,k)); scene.fog.near=lerp(55,120,k); scene.fog.far=lerp(260,520,k); hemi.intensity=lerp(1.05,1.6,k);
+    // --- victory cinematic: roar, take off, backflip, breathe fire at the sky, fireworks ---
+    if(t>2.1&&!finale.roar){ finale.roar=true; sfx('roar'); shake=0.6; }
+    const lift=smooth((t-3.0)/2.2); pl.y=lerp(0,18,lift)+(t>5.2?Math.sin((t-5.2)*2.2)*0.7:0); pl.ground=pl.y<0.05; pl.vy=t>3&&t<5.2?8:0;
+    if(t>3&&!finale.launch){ finale.launch=true; sfx('djump'); sfx('whoosh'); shake=0.8; const p=dino.group.position; burst(p.x,0.3,p.z,80,14,1.2,1,ICEC.concat(FIRE),0,-8); }
+    if(t>3&&t<5.2&&rnd()<0.8){ const p=dino.group.position; emit(p.x+(rnd()-.5),p.y,p.z+(rnd()-.5),(rnd()-.5)*2,-4-rnd()*4,(rnd()-.5)*2,0.8,1.0,3,1.2,0.25,0,1,0); }
+    const flip=smooth(clamp((t-5.3)/1.1,0,1)), breathUp=smooth((t-6.4)/0.4)*(1-smooth((t-8.4)/0.5));
+    dino.inner.rotation.x=TAU*flip+0.6*breathUp;
+    if(t>6.6&&t<8.4){ if(!finale.fire){ finale.fire=true; sfx('bigBeam'); sfx('roar'); }
+      mouthWorld(_bf); const fx=-Math.sin(T4.yaw), fz=-Math.cos(T4.yaw); _bt.set(_bf.x+fx*26,_bf.y+30,_bf.z+fz*26);
+      placeBeam(_bf,_bt,1.3+0.35*Math.sin(t*45)); shake=Math.max(shake,0.35);
+      for(let q=0;q<6;q++){ const kk=rnd(); emit(lerp(_bf.x,_bt.x,kk)+(rnd()-.5)*2,lerp(_bf.y,_bt.y,kk)+(rnd()-.5)*2,lerp(_bf.z,_bt.z,kk)+(rnd()-.5)*2,(rnd()-.5)*6,rnd()*6,(rnd()-.5)*6,0.8,1.8,3,1.2+rnd()*0.8,0.2,-2,0.8,0); } }
+    else if(finale.fire) beamG.visible=false;
+    if(t>7.0&&t<10.2&&rnd()<dt*3){ const p=dino.group.position; const x=p.x+(rnd()-.5)*44, y=p.y+8+rnd()*18, z=p.z+(rnd()-.5)*44;
+      burst(x,y,z,130,17,1.4,1.7,pick([[[3,1.2,0.2],[3,2.2,0.5]],[[2.4,0.5,1.6],[3,1.4,2]],[[1.2,2.2,3],[2.6,2.8,3]],[[3,2.6,0.8],[3,1.6,0.3]]]),0,-4); sfx('boom',0.3); }
+    if(t>8.6&&!finale.ban){ finale.ban=true; banner('THE DINOSAURS LIVE','VICTORY','#ffb02a'); setTrack(null); sfx('win'); }
+    if(t>11.2&&mode==='finale'){ mode='won'; saveHi(); showPanel('win'); } }
 }
 
 // ---------- EXTINCTION SKY ----------
@@ -1260,7 +1276,7 @@ function setupPhase(n){
 function startPhase(n,drop){
   setupPhase(n); mode='play';
   if(drop){ pl.y=10; pl.ground=false; pl.vy=-2; }
-  banner('PHASE '+n+' / 4',NAMES[n],GLOW[n]); setTrack({2:'inferno',3:'tube',4:'ext'}[n]);
+  banner('PHASE '+n+' / 4'+(speedMul>1?'  ·  SPEED ×'+speedMul:''),NAMES[n],GLOW[n]); setTrack({2:'inferno',3:'tube',4:'ext'}[n]);
   hint(n===2?(TOUCH?'SWIPE ← → LANES · TAP JUMP (TAP AGAIN IN AIR) · SWIPE ↓ DUCK':'← → SWITCH LANES  ·  SPACE JUMP (AGAIN IN AIR)  ·  ↓ DUCK')
       :n===3?(TOUCH?'SWIPE ← → TO ORBIT THE TUBE · FIND THE GAPS':'← → ORBIT AROUND THE TUBE  ·  FIND THE GAPS')
       :(TOUCH?'SWIPE ← → AT THE CORNERS TO TURN · DON\'T FALL':'← → AT THE CORNERS TO TURN  ·  DON\'T FALL OFF'));
@@ -1548,7 +1564,9 @@ function update3D(rdt){
       camBase.set(s*cr,-c*cr,7.5+(sc-1)*2); camera.up.set(-s,c,0); look.set(s*(TR-1.6),-c*(TR-1.6),-16); }
     else if(phase===4&&(mode==='finale'||mode==='won')){ camera.up.set(0,1,0); const P=dino.group.position, fx=-Math.sin(T4.camYaw), fz=-Math.cos(T4.camYaw);
       if(!finale.hit){ camBase.lerp(_gp.set(P.x-fx*13+(-fz)*7,3.2*sc,P.z-fz*13+fx*7),1-Math.exp(-rdt*3)); look.lerp(_v.set((P.x+T4.titanChest.x)/2,(2+T4.titanChest.y)/2,(P.z+T4.titanChest.z)/2),1-Math.exp(-rdt*4)); }
-      else { camBase.lerp(_gp.set(P.x-fx*14,4.5+(sc-1)*2,P.z-fz*14),1-Math.exp(-rdt*2)); look.lerp(_v.set(P.x+fx*6,1.5,P.z+fz*6),1-Math.exp(-rdt*2)); } }
+      else { const t=finale.t, ang=t<3?0:(t-3)*0.55, wide=smooth((t-8.6)/1.6), R=lerp(13,27,wide), Hh=lerp(3.5,-2.5,wide);
+        const bx=-fx, bz=-fz, ca=Math.cos(ang), sa=Math.sin(ang), dx=bx*ca-bz*sa, dz=bx*sa+bz*ca;
+        camBase.lerp(_gp.set(P.x+dx*R,Math.max(1.5,P.y+Hh),P.z+dz*R),1-Math.exp(-rdt*2.5)); look.lerp(_v.set(P.x,P.y+1.5+wide*4,P.z),1-Math.exp(-rdt*4)); } }
     else if(phase===4){ gameCam(sc,camBase,look,_gu); camera.up.copy(_gu); if(mode==='boss'||(mode==='dead'&&B.reached)){ const P=segPos(curSeg(),pl.s,pl.x*0.6), fx=-Math.sin(T4.camYaw), fz=-Math.cos(T4.camYaw); camBase.set(P.x-fx*11,6.2,P.z-fz*11); look.set(P.x+fx*18,3.2,P.z+fz*18); } }
     else if(mode==='finale'||mode==='won'){ camera.up.set(0,1,0);
       if(!finale.hit){ camBase.lerp(_gp.set(pl.x+7,2.4*sc,15),1-Math.exp(-rdt*3)); look.lerp(_v.set(0,meteor.g.position.y*0.45,meteor.g.position.z*0.45),1-Math.exp(-rdt*4)); }
@@ -1581,9 +1599,9 @@ function showPanel(type){
     $('b2').onclick=()=>{ hidePanel(); resetAll(); };
   } else {
     $('pk').textContent='YOU WIN'; $('pt').textContent='ICE AGE: CANCELLED'; $('ps').textContent='You melted the Ice Titan with your face. The dinosaurs live forever. Humans? Never heard of them.';
-    st.innerHTML=`<div>SCORE<b>${pad(score)}</b></div><div>BEST<b>${pad(hi)}</b></div><div>LOOP<b>×${(speedMul).toFixed(2)}</b></div>`;
+    st.innerHTML=`<div>SCORE<b>${pad(score)}</b></div><div>BEST<b>${pad(hi)}</b></div><div>NEXT LOOP<b>×${speedMul*2}</b></div>`;
     $('b1').textContent='AGAIN, BUT FASTER'; $('b2').textContent='BACK TO THE 404';
-    $('b1').onclick=()=>{ hidePanel(); speedMul*=1.2; stage=1; startPhase(2); };
+    $('b1').onclick=()=>{ hidePanel(); speedMul*=2; stage=1; startPhase(2); };
     $('b2').onclick=()=>{ hidePanel(); resetAll(); };
   }
 }
@@ -1610,6 +1628,7 @@ function act(a){
   if(mode==='p1wait'){ if(a==='jump'){ mode='p1'; jump2D(); } return; }
   if(mode==='p1'){ if(a==='jump') jump2D(); if((a==='down'||a==='duckTap')&&!p1.ground) p1.vy=Math.min(p1.vy,-PX*400); return; }
   if(mode==='qte'){ if(a==='jump'||a==='fire') chargeUp(); return; }
+  if(mode==='finale'&&phase===4&&finale.hit&&finale.t>3&&a==='jump'){ finale.t=Math.max(finale.t,11.1); return; }
   if(mode!=='play'&&mode!=='boss') return;
   if(a==='fire') fireBreath();
   else if(a==='jump') jump3D();
@@ -1673,7 +1692,7 @@ function loop(now){
 }
 // warm up shaders once so the twist has no hitch
 composer.render(); requestAnimationFrame(loop);
-window.__game={get pengs(){return T4.segs.flatMap(sg=>sg.obs.filter(o=>o.snack).map(o=>[T4.segs.indexOf(sg),Math.round(o.s),+o.lx.toFixed(1),o.alive]))},set bossHp(x){B.hp=x},get boss(){return {hp:B.hp,hearts:B.hearts,n:B.projs.length}},get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
+window.__game={skipBoss:()=>{ skipToBoss=true; stage=4; startPhase(4); phaseT=DUR[4]; },get pengs(){return T4.segs.flatMap(sg=>sg.obs.filter(o=>o.snack).map(o=>[T4.segs.indexOf(sg),Math.round(o.s),+o.lx.toFixed(1),o.alive]))},set bossHp(x){B.hp=x},get boss(){return {hp:B.hp,hearts:B.hearts,n:B.projs.length}},get p1(){return p1},ice:()=>{const c=curSeg();return c?{turn:c.turn,L:c.L,s:pl.s,si:T4.si,pend:T4.pend,y:pl.y,fin:c===T4.finalSeg}:null},get stage(){return stage},set stage(x){setForm(x);dinoColors(1)},set god(x){GOD=x},twist:()=>twistStart('time'),get mode(){return mode},get phase(){return phase},get phaseT(){return phaseT},set phaseT(x){phaseT=x},startReveal,startPhase,act,get score(){return score}};
 </script>
 </body>
 </html>
